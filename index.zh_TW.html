@@ -35,7 +35,8 @@
 <li>第一分割： vfat 主分割區， windows 可以看得見。
 <li>第二分割： 延申分割區， 裡面可以有一至數個 linux 邏輯分割。
 </ol>
-<p>然後它會在第一分割安裝 <a href=
+<p>然後它會把 /usr/lib/syslinux 整個目錄拷貝到第一分割的
+boot/syslinux 子目錄去， 並且安裝 <a href=
 "http://newtoypia.blogspot.tw/2015/02/extlinux.html">
 extlinux 開機管理員</a>。
 
@@ -59,9 +60,73 @@ extlinux 開機管理員</a>。
 /usr/lib/syslinux 底下。
 </ol>
 
-<h2>四、 使用範例</h2>
+<h2>四、 一些使用範例</h2>
 
-<h2>五、 可用選項</h2>
+<ol>
+<li>把 /dev/sdz 切成 sdz1 跟 sdz5 兩個分割， 並安裝 extlinux。<br />
+<code>mbootu2 -d /dev/sdz</code>
+<li>把 /dev/sdz 切成 sdz1、 sdz5、 sdz6 共三個分割， 並安裝 extlinux。
+分配 800MB 給 sdz5、 1200MB 給 sdz6。<br />
+<code>mbootu2 -d /dev/sdz -z '800 1200'</code>
+<li>/dev/sdz 容量太大 (超過 40000MB， 例如是 64G 的隨身碟)
+以至於 mbootu2 不敢動它。 把容量上限調高到 80000MB：
+<code>mbootu2 -d /dev/sdz -m 80000</code>
+<li>分配大約 12G 給 sdz5、 大約 12G 給 sdz6、 大約 18G 給 sdz7，
+改從 /tmp/syslinux 拷貝 syslinux 子目錄，
+並且把 /tmp/finnix-110 子目錄拷貝到第一分割的根目錄下：
+<code>mbootu2 -d /dev/sdz -m 80000 -s /tmp/syslinux -f /tmp/finnix-110</code>
+<li><strong>危險!</strong> 假設這是一部剛買的新電腦，
+2T 的主硬碟裡沒有資料。 你用 finnix-ckhung15c 開機，
+想要一口氣分割硬碟並安裝 finnix。
+那麼可以用以下指令把整顆內建主硬碟原先的內容<strong>全部燒毀</strong>，
+並且分配大約 200G 給 sda5、 大約 200G 給 sda6、
+大約 600G 給 sda7， 剩下的都給 sda1：
+<code>ln -s /cdrom /tmp/finnix-ckhung15c ;
+mbootu2 -d /dev/sdz -f /tmp/finnix-ckhung15c
+-m 3000000 -o force_sda,force_sfdisk -z '200000 200000 600000'</code>
+</ol>
+
+<h2>五、 完整選項列表</h2>
+
+<ol>
+<li><code>-d /dev/sdz</code> 以 /dev/sdz 為標的隨身碟。
+/dev/sdz 的分割表跟其上的每個分割全部都會被一掃而空!
+<li><code>-f /tmp/finnix-ckhung15c</code> 把 (內含 finnix 目錄結構的)
+/tmp/finnix-ckhung15c 拷貝到標的隨身碟第一分割的根目錄下，
+目錄名稱不變。 如果你的 finnix 放在 /cdrom 子目錄下，
+但是希望拷貝過去之後改名為 finnix-ckhung15c ，
+那麼可以事先建立連結：
+<code>cd /tmp ; ln -s /cdrom finnix-ckhung15c</code>
+然後在下 mbootu2 指令時， 用
+<code>-f /tmp/finnix-ckhung15c</code> 選項。
+預設是不會拷貝 finnix 目錄。
+<li><code>-m 80000</code> 把標的碟的容量上限調整為 80000MB，
+這樣 mbootu2 才敢寫入 64G 的隨身碟。
+預設上限是 40000MB， 也就是只能寫入 32G 或更小的隨身碟。
+<code>-o force_sda,force_sfdisk</code> 這個 -o
+後面可以加上一到數個特殊選項， 當中用半型逗號分開
+(不可有空格)。
+<ul>
+<li><code>force_sda</code> 通常 mbootu2 拒絕把 /dev/sda 當做標的碟。
+加了這個選項之後， mbootu2 才敢把 /dev/sda 當做標的碟。
+<li><code>force_sfdisk</code> 某些隨身碟在製作時會失敗，
+並且看到當中有類似這樣的錯誤訊息：
+sfdisk: I don't like these partitions - nothing changed.
+(If you really want this, use the --force option.)
+那就需要加上這個選項。
+</ul>
+<li><code>-s /tmp/syslinux</code> 改從 /tmp/syslinux
+子目錄拷貝 syslinux 相關檔案。 <strong>注意!</strong>
+標的碟上的 syslinux 的版本必須跟
+「安裝 extlinux 的時候 (extlinux -i ...) 這個
+extlinux 執行檔的版本」 要一致，
+否則會無法載入模組。 所以通常沒事的話，
+還是接受預設值 /usr/lib/syslinux 比較簡單。
+<li><code>-v 2</code> 把 mbootu2 列印訊息的囉嗦程度設為 2。
+<li><code>-z '200 800 600'</code> 把五、六、七分割的大小分別設定成
+200MB、 800MB、 600MB。 預設是只有 /dev/sdz5 一個邏輯分割，
+大小為 6400MB。
+</ol>
 
 
       <footer class="site-footer">
