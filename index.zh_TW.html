@@ -38,7 +38,9 @@
 <p>然後它會把 /usr/lib/syslinux 整個目錄拷貝到第一分割的
 boot/syslinux 子目錄去， 並且安裝 <a href=
 "http://newtoypia.blogspot.tw/2015/02/extlinux.html">
-extlinux 開機管理員</a>。
+extlinux 開機管理員</a>。 最後它會呼叫 <a href=
+"http://newtoypia.blogspot.tw/2015/02/qemu-kvm.html">
+qemu 虛擬機管理員</a> 來測試你的隨身碟是否能夠成功開機。
 
 <h2>二、 需求</h2>
 
@@ -46,6 +48,7 @@ extlinux 開機管理員</a>。
 <li>作業系統必須是 linux
 <li>已安裝 perl、 sfdisk、 dosfstools、 extlinux
 <li>建議 (但非必須) 備妥 finnix 作業系統資料夾 (光碟或隨身碟皆可)
+<li>建議 (但非必須) 安裝 qemu-system-x86 套件以便測試。
 </ol>
 <p>如果你用 <a href=
 "http://newtoypia.blogspot.tw/2014/09/chinese-finnix.html">
@@ -55,16 +58,22 @@ extlinux 開機管理員</a>。
 
 <ol>
 <li>把 mbootu2 拷貝到你的 linux 系統的 /usr/sbin 底下。
-<li>在 syslinux/ 子目錄底下， 有一個設定檔 extlinux
-和一些圖檔。 請把這些檔案拷貝到你的 linux 系統的
+<li>在 syslinux/ 子目錄底下有一些圖檔，
+還有一個最重要的設定檔 extlinux.conf。
+請把這些檔案拷貝到你的 linux 系統的
 /usr/lib/syslinux 底下。
 </ol>
 
 <h2>四、 一些使用範例</h2>
 
+<p><strong>重要!</strong> 使用 mbootu2 處理 /dev/sdz
+之前， 請務必把所有的 /dev/sdz? 都卸載 (umount) 下來。
 <ol>
 <li>把 /dev/sdz 切成 sdz1 跟 sdz5 兩個分割， 並安裝 extlinux。<br />
 <code>mbootu2 -d /dev/sdz</code>
+<li>sfdisk 對某些隨身碟過敏， 需要加上
+<code>-o force_sfdisk</code> 選項才會成功：<br />
+<code>mbootu2 -o force_sfdisk -d /dev/sdz</code>
 <li>把 /dev/sdz 切成 sdz1、 sdz5、 sdz6 共三個分割， 並安裝 extlinux。
 分配 800MB 給 sdz5、 1200MB 給 sdz6。<br />
 <code>mbootu2 -d /dev/sdz -z '800 1200'</code>
@@ -86,6 +95,11 @@ mbootu2 -d /dev/sdz -f /tmp/finnix-ckhung15c
 -m 3000000 -o force_sda,force_sfdisk -z '200000 200000 600000'</code>
 </ol>
 
+<p>mbootu2 做好開機隨身碟之後， 會呼叫
+qemu-system-x86_64 測試你的隨身碟能否開機。
+第一次測試經常會失敗。 先不要急著重做，
+手動重下一次 qemu-system-x86_64 指令可能就成功了。
+
 <h2>五、 完整選項列表</h2>
 
 <ol>
@@ -103,8 +117,8 @@ mbootu2 -d /dev/sdz -f /tmp/finnix-ckhung15c
 <li><code>-m 80000</code> 把標的碟的容量上限調整為 80000MB，
 這樣 mbootu2 才敢寫入 64G 的隨身碟。
 預設上限是 40000MB， 也就是只能寫入 32G 或更小的隨身碟。
-<code>-o force_sda,force_sfdisk</code> 這個 -o
-後面可以加上一到數個特殊選項， 當中用半型逗號分開
+<li><code>-o force_sda</code> 或 <code>-o force_sfdisk</code>
+這個 -o 後面可以加上一到數個特殊選項， 當中用半型逗號分開
 (不可有空格)。
 <ul>
 <li><code>force_sda</code> 通常 mbootu2 拒絕把 /dev/sda 當做標的碟。
