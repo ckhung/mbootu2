@@ -56,13 +56,14 @@ qemu 虛擬機管理員</a> 來測試你的隨身碟是否能夠成功開機。
 
 <h2>三、 安裝</h2>
 
-<ol>
-<li>把 mbootu2 拷貝到你的 linux 系統的 /usr/sbin 底下。
-<li>在 syslinux/ 子目錄底下有一些圖檔，
-還有一個最重要的設定檔 extlinux.conf。
-請把這些檔案拷貝到你的 linux 系統的
-/usr/lib/syslinux 底下。
-</ol>
+<p>解壓縮之後， 請進入 mbootu2-master 子目錄， 然後：
+<pre><code>
+cp mbootu2 /usr/sbin
+cp syslinux/* /usr/lib/syslinux
+</code></pre>
+
+<p>其中最重要的就是 syslinux/ 底下的設定檔
+extlinux.conf。
 
 <h2>四、 一些使用範例</h2>
 
