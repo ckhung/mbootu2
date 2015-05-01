@@ -94,6 +94,14 @@ extlinux.conf。
 <code>ln -s /cdrom /tmp/finnix-ckhung15c ;
 mbootu2 -d /dev/sdz -f /tmp/finnix-ckhung15c
 -m 3000000 -o force_sda,force_sfdisk -z '200000 200000 600000'</code>
+<li><strong>[未完全測試! 請不要太信任它! 若有錯誤請回報，謝謝!]</strong>
+謹慎模式： 只安裝 mbr 以及格式化第一分割 (Dos 分割) 並安裝 extlinux；
+不去更動既有的分割表：
+<code>mbootu2 -x mbr,formatD -d /dev/sdz</code>
+<li><strong>[未完全測試! 請不要太信任它! 若有錯誤請回報，謝謝!]</strong>
+謹慎模式： 只格式化第五 (含) 之後的分割 (Linux 分割) 並安裝 extlinux；
+不去更動既有的分割表， 也不格式化第一分割：
+<code>mbootu2 -x formatL -d /dev/sdz</code>
 </ol>
 
 <p>mbootu2 做好開機隨身碟之後， 會呼叫
@@ -141,6 +149,20 @@ extlinux 執行檔的版本」 要一致，
 <li><code>-z '200 800 600'</code> 把五、六、七分割的大小分別設定成
 200MB、 800MB、 600MB。 預設是只有 /dev/sdz5 一個邏輯分割，
 大小為 6400MB。
+<li><code>-x none</code> 明確指定模式 (explicit mode)：
+除了安裝 extlinux 及拷貝檔案之外， 其他什麼都不做。 此外還有：
+    <ul>
+    <li><code>-x mbr</code> 只安裝 mbr、 安裝 extlinux、 拷貝檔案。
+    <li><code>-x fdisk</code> 只切分割、 安裝 extlinux、 拷貝檔案。
+    <li><code>-x formatD</code> 只格式化第一分割 (Dos 分割)、
+    安裝 extlinux、 拷貝檔案。
+    <li><code>-x formatD</code> 只格式化第五及以後的分割 (Linux 分割)、
+    安裝 extlinux、 拷貝檔案。
+    <li><code>-x format</code> 只格式化所有分割、
+    安裝 extlinux、 拷貝檔案。
+    </ul>
+上述選項可以同時出現， 當中用半型逗號分開 (不可有空格)，
+例如 <code>-x mbr,format</code>。
 </ol>
 
 

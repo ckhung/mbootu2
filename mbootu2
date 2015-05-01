@@ -21,9 +21,15 @@ my %opts = (
     s => "/usr/lib/syslinux",		# syslinux dir
     v => 2,		# verbosity
     z => '6400',	# space separated list of partition sizes in MB
+    x => undef,		# explicit mode - only do explicitly specified
+			# actions. possible parameters include:
+			# mbr,fdisk,mkfs,mkfsD,mkfsL,none
 );
 
-getopts('d:f:m:o:s:v:z:', \%opts);
+getopts('d:f:m:o:s:v:x:z:', \%opts);
+
+my (@precautions) = defined($opts{x}) ?
+    map { s/_/.*/g; } split(/,/,$opts{x}) : undef;
 
 my ($dst);
 die "missing '-s syslinux_dir'" unless $opts{s};
@@ -34,7 +40,7 @@ die "missing destination device" unless $dst->{dev};
 die "sorry, $ARGV currently only works for /dev/sd? or /dev/vd?"
     unless $dst->{dev} =~ m#^/dev/[vs]d[a-z]#;
 if ($dst->{dev} eq "/dev/sda") {
-    die "use '-o force_sda to force writing to /dev/sda"
+    die "use '-o force_sda' to force writing to /dev/sda"
 	unless $opts{o} =~ m#force_sda#;
 }
 die "destination device $dst->{dev} is not a block device"
@@ -105,12 +111,21 @@ if ($opts{f}) {
 }
 
 my ($force_sfdisk) = $opts{o} =~ /force_sfdisk/ ? "--force" : "";
-sys_echo(qq(
+
+sys_echo("mbr", qq(
     dd < /dev/zero > $dst->{dev} count=1
-    dd < $mbr_path > $dst->{dev}
+    dd < $mbr_path > $dst->{dev}"
+));
+sys_echo("fdisk", qq(
     sfdisk $force_sfdisk -q -uS $dst->{dev} < $tmpdir/sfdisk_in
+));
+sys_echo("(mbr|fdisk)", qq(
     sleep 4
+));
+sys_echo("mkfsD?", qq(
     mkfs -t vfat $dst->{dev}1
+));
+sys_echo(undef, qq(
     mkdir $tmpdir/dst
     mount $dst->{dev}1 $tmpdir/dst
     mkdir $tmpdir/dst/boot
@@ -121,24 +136,28 @@ sys_echo(qq(
 ));
 system("rm -rf $tmpdir");
 for (my $i=5; $i<=$#{ $dst->{part} }; ++$i) {
-    sys_echo_line(qq(mkfs -t ext4 $dst->{dev}$i));
+    sys_echo("mkfsL?", qq(
+	mkfs -t ext4 $dst->{dev}$i
+    ));
 }
-sys_echo_line(qq(qemu-system-x86_64 -enable-kvm -m 1024 $dst->{dev}));
-
-### remove usb, pass it to a classmate
+sys_echo_line(undef, qq(
+    qemu-system-x86_64 -enable-kvm -m 512 $dst->{dev}
+));
 
 sub sys_echo_line {
-    my ($cmd, $msg) = @_;
-    $msg = $cmd unless defined $msg;
-    print "$msg\n" if $opts{v} >= 2;
+    my ($only_do, $cmd) = @_;
+    return if ($only_do and not $opts{x}=~/\b$only_do\b/);
+    print "$cmd\n" if $opts{v} >= 2;
     system($cmd);
 }
 
 sub sys_echo {
-    my (@lines) = split('\n', $_[0]);
+    my ($only_do, $cmd) = @_;
+    return if ($only_do and not $opts{x}=~/\b$only_do\b/);
+    my (@lines) = split('\n', $cmd);
     foreach (@lines) {
 	next if (/^#/ or /^\s*$/);
-	sys_echo_line($_);
+	sys_echo_line(undef, $_);
     }
 }
 
