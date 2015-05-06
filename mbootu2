@@ -114,7 +114,7 @@ my ($force_sfdisk) = $opts{o} =~ /force_sfdisk/ ? "--force" : "";
 
 sys_echo("mbr", qq(
     dd < /dev/zero > $dst->{dev} count=1
-    dd < $mbr_path > $dst->{dev}"
+    dd < $mbr_path > $dst->{dev}
 ));
 sys_echo("fdisk", qq(
     sfdisk $force_sfdisk -q -uS $dst->{dev} < $tmpdir/sfdisk_in
