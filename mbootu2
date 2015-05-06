@@ -146,14 +146,14 @@ sys_echo_line(undef, qq(
 
 sub sys_echo_line {
     my ($only_do, $cmd) = @_;
-    return if ($only_do and not $opts{x}=~/\b$only_do\b/);
+    return if ($only_do and $opts{x} and not $opts{x}=~/\b$only_do\b/);
     print "$cmd\n" if $opts{v} >= 2;
     system($cmd);
 }
 
 sub sys_echo {
     my ($only_do, $cmd) = @_;
-    return if ($only_do and not $opts{x}=~/\b$only_do\b/);
+    return if ($only_do and $opts{x} and not $opts{x}=~/\b$only_do\b/);
     my (@lines) = split('\n', $cmd);
     foreach (@lines) {
 	next if (/^#/ or /^\s*$/);
