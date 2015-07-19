@@ -1,163 +1,149 @@
 #!/usr/bin/perl -w
 
 # usage example:
-# ./mbootu2 -s /tmp/syslinux -f /syslinux/finnix-ckhung15c/ -z '600 600 7200' -d /dev/sdz
-# This will create an fat32 (0xc) partition /dev/sdz1 plus 3 logical
-# partitions of type linux (0x83) and of sizes 600MB, 600MB, and 7200MB.
-# If you don't mind messing with your /usr/lib/syslinux,
-# you can also copy extlinux.conf and *.jpg to /usr/lib/syslinux
-# and omit the -s option since by default mbootu2 copy syslinux
-# files from there.
+# mbootu2 -n -f /mnt/finnix-ckhung15c -z '600 8400' -q '-enable-kvm -m 1024' -t /dev/sdz
+# This will create an fat32 (0xc) partition /dev/sdz1 plus 2 logical
+# partitions of type linux (0x83) and of sizes 600MB and 8400MB.
+# Then extlinux is installed and finnix is copied to /dev/sdz1.
+# At the end, qemu-system-x86_64 is invoked with options
+# '-enable-kvm -m 1024' to test whether /dev/sdz can be
+# successfully booted.
 
 use Getopt::Std;
 use strict;
 
 my %opts = (
-    d => undef,		# destination device
+    b => "/usr/lib/syslinux",		# syslinux dir (boot-related files)
+    d => undef,		# obsolete option; print warning
     f => undef,		# finnix directory
     m => 40000,		# maximum device size in MB
+    n => undef,		# no-op mode (only print commands, does not execute)
     o => '',		# other options such as force_sda or force_sfdisk
-    p => '',		# only do partial work - not yet implemented
-    s => "/usr/lib/syslinux",		# syslinux dir
+    q => undef,		# run qemu with options
+    s => undef,		# obsolete option; print warning
+    t => undef,		# target device
     v => 2,		# verbosity
-    z => '6400',	# space separated list of partition sizes in MB
-    x => undef,		# explicit mode - only do explicitly specified
-			# actions. possible parameters include:
-			# mbr,fdisk,mkfs,mkfsD,mkfsL,none
+    z => undef,		# space separated list of partition sizes in MB
 );
 
-getopts('d:f:m:o:s:v:x:z:', \%opts);
+getopts('b:d:f:m:no:q:s:t:v:z:', \%opts);
 
-my (@precautions) = defined($opts{x}) ?
-    map { s/_/.*/g; } split(/,/,$opts{x}) : undef;
+### prevent users of older versions from making serious mistakes
+die "A major code change has removed options 'd' and 's'. See doc."
+    if ($opts{d} or $opts{s});
 
-my ($dst);
-die "missing '-s syslinux_dir'" unless $opts{s};
-die "cannot read syslinux dir $opts{s}"
-    unless (-d $opts{s} and -r $opts{s});
-$dst->{dev} = $opts{d};
-die "missing destination device" unless $dst->{dev};
+
+### sanity check on options
+my ($target);
+die "missing '-b syslinux_dir'" unless $opts{b};
+die "cannot read syslinux dir $opts{b}"
+    unless (-d $opts{b} and -r $opts{b});
+$target->{dev} = $opts{t};
+die "missing target device" unless $target->{dev};
 die "sorry, $ARGV currently only works for /dev/sd? or /dev/vd?"
-    unless $dst->{dev} =~ m#^/dev/[vs]d[a-z]#;
-if ($dst->{dev} eq "/dev/sda") {
+    unless $target->{dev} =~ m#^/dev/[vs]d[a-z]#;
+if ($target->{dev} eq "/dev/sda") {
     die "use '-o force_sda' to force writing to /dev/sda"
 	unless $opts{o} =~ m#force_sda#;
 }
-die "destination device $dst->{dev} is not a block device"
-    unless -b $dst->{dev};
-die "cannot write to destination device $dst->{dev}"
-    unless -w $dst->{dev};
+die "target device $target->{dev} is not a block device"
+    unless -b $target->{dev};
+die "cannot write to target device $target->{dev}"
+    unless -w $target->{dev};
+($target->{short_name}) = $target->{dev} =~ m#/dev/(\w+)#;
 
-($dst->{short_name}) = $dst->{dev} =~ m#/dev/(\w+)#;
-$dst->{size} = slurp("/sys/block/$dst->{short_name}/size");
-chomp $dst->{size};
-my ($m, $r) = (int($dst->{size}/2048), $dst->{size} % 2048);
-my ($x) = ($r>0) ? "... plus $r sectors. Interesting." : "";
-print "$dst->{dev} has $dst->{size} sectors ($m MB$x)\n"
-    if $opts{v} >= 1;
-die "aborted because size of $dst->{dev} exceeds $opts{m} MB.
-use '-m [number]' to increase maximum device size"
-    if ($m > $opts{m});
 
-my (@size) = split(' ', $opts{z});
-my ($sfdisk_in) = "";
-my ($last_sector) = $dst->{size};
-my ($requested);
-map { $requested += $_ } @size;
-my ($msg) = sprintf "Total of $requested MB are requested in %d partitions
-    but only %d MB are available in $dst->{dev}",
-    $#size+1, int($dst->{size}/2048);
-die $msg if $requested >= int($dst->{size}/2048)-2;
-for (my $i=$#size; $i>=0; --$i) {
-    my ($p) = $i + 5;
-    $dst->{part}[$p]{size} = $size[$i]*2048;
-    my ($start) = int( ($last_sector - $dst->{part}[$p]{size}) / 2048 ) * 2048;
-    my ($sectors) = $last_sector - $start - 1;
-    $sfdisk_in = "$start,$sectors,L\n$sfdisk_in";
-    $last_sector = $start;
-}
-$last_sector -= 2;
-$sfdisk_in = ",$last_sector,c,*\n,+,E\n;\n;\n$sfdisk_in";
+### WIPE OUT ENTIRE DISK IF REQUESTED!!!
 my ($tmpdir) = "/tmp/mbootu2-$$";
 system("mkdir $tmpdir");
-open F, "> $tmpdir/sfdisk_in" or die;
-print F $sfdisk_in;
-close F;
-my ($mbr_path) = slurp("find $opts{s} -name mbr.bin |");
-die "cannot find mbr.bin in $opts{s}" unless $mbr_path =~ /mbr.bin/;
+wipe() if (defined $opts{z} and $opts{z} =~ /^[\s\d]+$/);
+
+### check extlinux files on the running system
+my ($mbr_path) = slurp("find $opts{b} -name mbr.bin |");
+die "cannot find mbr.bin in $opts{b}" unless $mbr_path =~ /mbr.bin/;
 chomp $mbr_path;
-my ($conf_path) = slurp("find $opts{s} -name extlinux.conf |");
-die "cannot find extlinux.conf in $opts{s}"
+print STDERR "warning: more than one mbr.bin, using $mbr_path\n"
+    if ($mbr_path =~ s/\n.*//);
+my ($conf_path) = slurp("find $opts{b} -name extlinux.conf |");
+die "cannot find extlinux.conf in $opts{b}"
     unless $conf_path =~ /extlinux.conf/;
 chomp $conf_path;
 die "found more than one extlinux.conf [[
 $conf_path
 ]] don't know which one to use."
     if $conf_path =~ /\n/;
-$conf_path =~ s#/extlinux.conf\s*#/#;
-# print "<<$conf_path>> [[$opts{s}]]\n";
-$conf_path =~ s#$opts{s}/?##;
-# print "<<$conf_path>>\n";
-$conf_path = "$tmpdir/dst/boot/syslinux/$conf_path";
+
+### prepare commands to copy finnix
 my ($copy_finnix_cmd) = "";
 if ($opts{f}) {
     if (-d $opts{f} and -r $opts{f}) {
 	my ($fdir) = $opts{f} =~ m#([^/]+)/?$#;
-	$copy_finnix_cmd = "cp -a $opts{f}/ $tmpdir/dst ; sed 's#  #  $fdir/#' $tmpdir/dst/$fdir/md5sums > $tmpdir/dst/md5sums";
+	$copy_finnix_cmd = "cp -a $opts{f}/ $tmpdir/target ; sed 's#  #  $fdir/#' $tmpdir/target/$fdir/md5sums > $tmpdir/target/md5sums";
     } else {
 	print STDERR "warning: cannot read finnix dir $opts{f}, ignored\n"
 	    if $opts{v} >= 1;
     }
 }
 
-my ($force_sfdisk) = $opts{o} =~ /force_sfdisk/ ? "--force" : "";
-
-sys_echo("mbr", qq(
-    dd < /dev/zero > $dst->{dev} count=1
-    dd < $mbr_path > $dst->{dev}
-));
-sys_echo("fdisk", qq(
-    sfdisk $force_sfdisk -q -uS $dst->{dev} < $tmpdir/sfdisk_in
-));
-sys_echo("(mbr|fdisk)", qq(
+### install mbr and mark partition 1 as active
+sys_echo(qq(
+    dd < $mbr_path > $target->{dev}
+    sfdisk -A1 /dev/sdb
     sleep 4
 ));
-sys_echo("mkfsD?", qq(
-    mkfs -t vfat $dst->{dev}1
-));
-sys_echo(undef, qq(
-    mkdir $tmpdir/dst
-    mount $dst->{dev}1 $tmpdir/dst
-    mkdir $tmpdir/dst/boot
-    cp -a $opts{s} $tmpdir/dst/boot/syslinux
+
+### mount target partition
+my $target_dir = slurp("mount | grep $target->{dev}1 |");
+
+my $need_umount;
+
+if ( ! ( ($target_dir) = $target_dir =~ /\son\s(\S+)/ ) ) {
+    $target_dir = "$tmpdir/target";
+    sys_echo(qq(
+	mkdir $target_dir
+	mount $target->{dev}1 $target_dir
+    ));
+    $need_umount = 1;
+}
+
+### change $conf_path to point to target configuration path
+$conf_path =~ s#/extlinux.conf\s*#/#;
+# print "<<$conf_path>> [[$opts{b}]]\n";
+$conf_path =~ s#$opts{b}/?##;
+# print "<<$conf_path>>\n";
+$conf_path = "$target_dir/boot/syslinux/$conf_path";
+
+### install extlinux
+sys_echo(qq(
+    mkdir $target_dir/boot
+    cp -a $opts{b} $target_dir/boot/syslinux
     extlinux -i $conf_path
     $copy_finnix_cmd
-    umount $dst->{dev}1
-));
-system("rm -rf $tmpdir");
-for (my $i=5; $i<=$#{ $dst->{part} }; ++$i) {
-    sys_echo("mkfsL?", qq(
-	mkfs -t ext4 $dst->{dev}$i
-    ));
-}
-sys_echo_line(undef, qq(
-    qemu-system-x86_64 -enable-kvm -m 512 $dst->{dev}
 ));
 
+sys_echo(qq(    umount $target_dir)) if ($need_umount);
+
+system("rm -rf $tmpdir");
+
+if (defined $opts{q}) {
+    sys_echo(qq(    qemu-system-x86_64 $opts{q} $target->{dev}));
+}
+
 sub sys_echo_line {
-    my ($only_do, $cmd) = @_;
-    return if ($only_do and $opts{x} and not $opts{x}=~/\b$only_do\b/);
+    my ($cmd, $extra) = @_;
+die if $extra;
+    print "# " if ($opts{n});
     print "$cmd\n" if $opts{v} >= 2;
-    system($cmd);
+    system($cmd) unless $opts{n};
 }
 
 sub sys_echo {
-    my ($only_do, $cmd) = @_;
-    return if ($only_do and $opts{x} and not $opts{x}=~/\b$only_do\b/);
+    my ($cmd, $extra) = @_;
+die if $extra;
     my (@lines) = split('\n', $cmd);
     foreach (@lines) {
 	next if (/^#/ or /^\s*$/);
-	sys_echo_line(undef, $_);
+	sys_echo_line($_);
     }
 }
 
@@ -167,6 +153,54 @@ sub slurp {
     open F, $fn or die;
     while (<F>) { $ret .= $_; }
     return $ret;
+}
+
+sub wipe {
+    $target->{size} = slurp("/sys/block/$target->{short_name}/size");
+    chomp $target->{size};
+    my ($m, $r) = (int($target->{size}/2048), $target->{size} % 2048);
+    my ($x) = ($r>0) ? "... plus $r sectors. Interesting." : "";
+    print "$target->{dev} has $target->{size} sectors ($m MB$x)\n"
+	if $opts{v} >= 1;
+    die "aborted because size of $target->{dev} exceeds $opts{m} MB.
+    use '-m [number]' to increase maximum device size"
+	if ($m > $opts{m});
+
+    my (@size) = split(' ', $opts{z});
+    my ($sfdisk_in) = "";
+    my ($last_sector) = $target->{size};
+    my ($requested);
+    map { $requested += $_ } @size;
+    my ($msg) = sprintf "Total of $requested MB are requested in %d partitions
+	but only %d MB are available in $target->{dev}",
+	$#size+1, int($target->{size}/2048);
+    die $msg if $requested >= int($target->{size}/2048)-2;
+    for (my $i=$#size; $i>=0; --$i) {
+	my ($p) = $i + 5;
+	$target->{part}[$p]{size} = $size[$i]*2048;
+	my ($start) = int( ($last_sector - $target->{part}[$p]{size}) / 2048 ) * 2048;
+	my ($sectors) = $last_sector - $start - 1;
+	$sfdisk_in = "$start,$sectors,L\n$sfdisk_in";
+	$last_sector = $start;
+    }
+    $last_sector -= 2;
+    $sfdisk_in = ",$last_sector,c,*\n,+,E\n;\n;\n$sfdisk_in";
+
+    open F, "> $tmpdir/sfdisk_in" or die;
+    print F $sfdisk_in;
+    close F;
+    my ($force_sfdisk) = $opts{o} =~ /force_sfdisk/ ? "--force" : "";
+###       dd < /dev/zero > $target->{dev} count=1
+    sys_echo(qq(
+	sfdisk $force_sfdisk -q -uS $target->{dev} < $tmpdir/sfdisk_in
+	sleep 4
+	mkfs -t vfat $target->{dev}1
+    ));
+    for (my $i=5; $i<=$#{ $target->{part} }; ++$i) {
+	sys_echo(qq(
+	    mkfs -t ext4 $target->{dev}$i
+	));
+    }
 }
 
 ### http://blog.yo61.com/creating-an-optimally-aligned-full-disk-partition-with-parted/

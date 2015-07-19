@@ -12,7 +12,8 @@
   <body>
     <section class="page-header">
       <h1 class="project-name">Mbootu2</h1>
-      <h2 class="project-tagline">把一顆隨身碟切割、 格式化、 並且用 extlinux 把它變成開機隨身碟。 (重寫版的 mk-boot-usb)</h2>
+      <h2 class="project-tagline">用 extlinux 把一顆隨身碟變成開機隨身碟。
+      可以保留原資料也可以整顆燒毀重練。</h2>
       <a href="https://github.com/ckhung/mbootu2" class="btn">View on GitHub</a>
       <a href="https://github.com/ckhung/mbootu2/zipball/master" class="btn">Download .zip</a>
       <a href="https://github.com/ckhung/mbootu2/tarball/master" class="btn">Download .tar.gz</a>
@@ -24,23 +25,31 @@
 
 <h2>一、 簡介</h2>
 
-<p>mbootu2 幫你製作第二代的百毒不侵救命碟。
-因為 <strong>它會把你的隨身碟上的所有資料清空</strong>，
-所以請特別注意： (1) linux 新手請先把插在電腦上的其他隨身碟通通拔掉，
+<p><strong>稍早版 mbootu2 的使用者請注意：</strong>
+2015/7/19 修改版之後， 選項略有改變， 請重讀本文件!</p>
+
+<p>mbootu2 算是 mk-boot-usb 的重寫版。 它幫你製作第二代的百毒不侵救命碟。
+你可以拿它來把你所有的資料隨身碟全部改裝成 finnix 開機碟；
+它不會去動到你的資料， 只會把 /usr/lib/syslinux
+整個目錄拷貝到第一分割的 boot/syslinux 子目錄去，
+並且安裝 (syslinux 的兄弟) <a href=
+"http://newtoypia.blogspot.tw/2015/02/extlinux.html">
+extlinux 開機管理員</a>
+(以及 finnix -- 但它會佔掉 300MB 的空間)。
+
+<p>如果加上<strong>危險的 -z 選項</strong>， 則 mbootu2 會像第一代的
+mk-boot-usb 一樣， 在安裝上述開機管理員等等之前，
+<strong>先把你的隨身碟上的所有資料清空、
+把整顆隨身碟砍掉重練</strong>。
+所以使用 -z 選項時請特別注意：
+(1) linux 新手請先把插在電腦上的其他隨身碟通通拔掉，
 以免不小心被格式化掉了! (2) 想要製作救命碟的那顆隨身碟，
 請先把所有資料先備份到其他地方。
-
-<p>它會把隨身碟切成：
+如果加了 -z 選項它還會把隨身碟切成：
 <ol>
 <li>第一分割： vfat 主分割區， windows 可以看得見。
 <li>第二分割： 延申分割區， 裡面可以有一至數個 linux 邏輯分割。
 </ol>
-<p>然後它會把 /usr/lib/syslinux 整個目錄拷貝到第一分割的
-boot/syslinux 子目錄去， 並且安裝 <a href=
-"http://newtoypia.blogspot.tw/2015/02/extlinux.html">
-extlinux 開機管理員</a>。 最後它會呼叫 <a href=
-"http://newtoypia.blogspot.tw/2015/02/qemu-kvm.html">
-qemu 虛擬機管理員</a> 來測試你的隨身碟是否能夠成功開機。
 
 <h2>二、 需求</h2>
 
@@ -67,70 +76,79 @@ extlinux.conf。
 
 <h2>四、 一些使用範例</h2>
 
-<p><strong>重要!</strong> 要使用 mbootu2 處理 /dev/sdz
-之前， 請務必先把所有的 /dev/sdz? 都卸載 (umount) 下來。
 <ol>
-<li>把 /dev/sdz 切成 sdz1 跟 sdz5 兩個分割， 並安裝 extlinux。<br />
-<code>mbootu2 -d /dev/sdz</code>
-<li>sfdisk 對某些隨身碟過敏， 需要加上
-<code>-o force_sfdisk</code> 選項才會成功：<br />
-<code>mbootu2 -o force_sfdisk -d /dev/sdz</code>
-<li>把 /dev/sdz 切成 sdz1、 sdz5、 sdz6 共三個分割， 並安裝 extlinux。
+<li>在 /dev/sdz1 上面安裝 extlinux， 把 /dev/sdz 變成可開機隨身碟：<br />
+<code>mbootu2 -t /dev/sdz</code><br />
+(但是因為沒有拷貝 finnix， 所以開機時只會出現一個沒有功能的選單。)
+<li>在 /dev/sdz1 上面安裝 extlinux， 並且把
+/mnt/finnix-ckhung15c 拷貝到 /dev/sdz1 上面，
+真的把 /dev/sdz 變成 finnix 可開機隨身碟：<br />
+<code>mbootu2 -f /mnt/finnix-ckhung15c -t /dev/sdz</code>
+注意： 事後還必須手動用文字編輯器把標的碟第一分割上的
+boot/syslinux/extlinux 裡面 「指定 finnix 目錄」 的
+(三幾個) 參數也改成相同的名稱。
+<li>同上， 且做好之後呼叫 qemu (硬體加速模式、
+給它 1024 MB 的記憶體) 測試一下：<br />
+<code>mbootu2 -f /mnt/finnix-ckhung15c -q '-enable-kvm -m 1024'
+-t /dev/sdz</code>
+<li><strong>燒毀!</strong> 把 /dev/sdz 切成 sdz1、 sdz5、 sdz6
+共三個分割， 並且把它變成 finnix 開機隨身碟。
 分配 800MB 給 sdz5、 1200MB 給 sdz6。<br />
-<code>mbootu2 -d /dev/sdz -z '800 1200'</code>
-<li>/dev/sdz 容量太大 (超過 40000MB， 例如是 64G 的隨身碟)
-以至於 mbootu2 不敢動它。 把容量上限調高到 80000MB：
-<code>mbootu2 -d /dev/sdz -m 80000</code>
-<li>分配大約 12G 給 sdz5、 大約 12G 給 sdz6、 大約 18G 給 sdz7，
-改從 /tmp/syslinux 拷貝 syslinux 子目錄，
-並且把 /tmp/finnix-110 子目錄拷貝到第一分割的根目錄下：
-<code>mbootu2 -d /dev/sdz -m 80000 -s /tmp/syslinux -f /tmp/finnix-110</code>
-<li><strong>危險!</strong> 假設這是一部剛買的新電腦，
-2T 的主硬碟裡沒有資料。 你用 finnix-ckhung15c 開機，
-想要一口氣分割硬碟並安裝 finnix。
-那麼可以用以下指令把整顆內建主硬碟原先的內容<strong>全部燒毀</strong>，
-並且分配大約 200G 給 sda5、 大約 200G 給 sda6、
+<code>mbootu2 -f /mnt/finnix-ckhung15c -t /dev/sdz -z '800 1200'</code>
+<li><strong>燒毀!</strong> sfdisk 對某些隨身碟過敏， 需要加上
+<code>-o force_sfdisk</code> 選項才會成功：<br />
+<code>mbootu2 -f /mnt/finnix-ckhung15c -o force_sfdisk -t /dev/sdz -z '800 1200'</code>
+<li><strong>燒毀!</strong> /dev/sdz 容量太大 (超過 40000MB，
+例如是 64G 的隨身碟) 以至於 mbootu2 不敢動它。
+把容量上限調高到 80000MB：<br />
+<code>mbootu2 -f /mnt/finnix-ckhung15c -m 80000 -t /dev/sdz -z '800 1200'</code>
+<li><strong>燒毀 C 槽! 讓你無家可歸!</strong>
+假設這是一部剛買的新電腦， 2T 的主硬碟裡沒有資料。
+你用 finnix-ckhung15c 光碟開機， 想要一口氣分割硬碟並安裝 finnix。
+因為平常 mbootu2 不敢燒毀 /dev/sda (就是 windows 下的 C 槽)，
+所以需要用 <code>-o force_sda</code> 選項強迫它照辦：<br />
+以下指令分配大約 200G 給 sda5、 大約 200G 給 sda6、
 大約 600G 給 sda7， 剩下的都給 sda1：
 <code>ln -s /cdrom /tmp/finnix-ckhung15c ;
-mbootu2 -d /dev/sdz -f /tmp/finnix-ckhung15c
+mbootu2 -t /dev/sdz -f /tmp/finnix-ckhung15c
 -m 3000000 -o force_sda,force_sfdisk -z '200000 200000 600000'</code>
-<li><strong>[未完全測試! 請不要太信任它! 若有錯誤請回報，謝謝!]</strong>
-謹慎模式： 只安裝 mbr 以及格式化第一分割 (Dos 分割) 並安裝 extlinux；
-不去更動既有的分割表：
-<code>mbootu2 -x mbr,formatD -d /dev/sdz</code>
-<li><strong>[未完全測試! 請不要太信任它! 若有錯誤請回報，謝謝!]</strong>
-謹慎模式： 只格式化第五 (含) 之後的分割 (Linux 分割) 並安裝 extlinux；
-不去更動既有的分割表， 也不格式化第一分割：
-<code>mbootu2 -x formatL -d /dev/sdz</code>
 </ol>
 
-<p>mbootu2 做好開機隨身碟之後， 會呼叫
-qemu-system-x86_64 測試你的隨身碟能否開機。
+<p>呼叫 qemu-system-x86_64 測試隨身碟能否開機時，
 第一次測試經常會失敗。 先不要急著重做，
 手動重下一次 qemu-system-x86_64 指令可能就成功了。
 
 <h2>五、 完整選項列表</h2>
 
 <ol>
-<li><code>-d /dev/sdz</code> 以 /dev/sdz 為標的隨身碟。
-/dev/sdz 的分割表跟其上的每個分割全部都會被一掃而空!
-<li><code>-f /tmp/finnix-ckhung15c</code> 把 (內含 finnix 目錄結構的)
-/tmp/finnix-ckhung15c 拷貝到標的隨身碟第一分割的根目錄下，
-目錄名稱不變。 如果你的 finnix 放在 /cdrom 子目錄下，
+<li><code>-b /tmp/syslinux</code> 改從 /tmp/syslinux
+子目錄拷貝 syslinux 的開機 (boot) 相關檔案。
+<strong>注意!</strong> 標的碟上的 syslinux 的版本必須跟
+「安裝 extlinux 的時候 (extlinux -i ...) 這個
+extlinux 執行檔的版本」 要一致，
+否則會無法載入模組。 所以通常沒事的話，
+還是接受預設值 /usr/lib/syslinux 比較簡單。
+<li><code>-f /tmp/finnix-ckhung15c</code> 從 /tmp/finnix-ckhung15c
+把 finnix 拷貝到標的碟的第一分割。
+注意： 事後還必須手動用文字編輯器把標的碟第一分割上的
+boot/syslinux/extlinux 裡面 「指定 finnix 目錄」 的
+(三幾個) 參數也改成相同的名稱。
+如果你的 finnix 放在 /cdrom 子目錄下，
 但是希望拷貝過去之後改名為 finnix-ckhung15c ，
-那麼可以事先建立連結：
+那麼可以在事先建立連結：
 <code>cd /tmp ; ln -s /cdrom finnix-ckhung15c</code>
-然後在下 mbootu2 指令時， 用
-<code>-f /tmp/finnix-ckhung15c</code> 選項。
-預設是不會拷貝 finnix 目錄。
+然後呼叫 mbootu2 即可用 <code>-f /tmp/finnix-ckhung15c</code>
+這樣就會跟設定檔裡面的預設值一致。
 <li><code>-m 80000</code> 把標的碟的容量上限調整為 80000MB，
 這樣 mbootu2 才敢寫入 64G 的隨身碟。
-預設上限是 40000MB， 也就是只能寫入 32G 或更小的隨身碟。
+預設上限是 40000MB， 也就 mbootu2 通常只敢寫入 32G 或更小的隨身碟。
+<li><code>-n</code> 測試； 僅顯示 shell 指令， 不要真的執行。
 <li><code>-o force_sda</code> 或 <code>-o force_sfdisk</code>
 這個 -o 後面可以加上一到數個特殊選項， 當中用半型逗號分開
 (不可有空格)。
 <ul>
-<li><code>force_sda</code> 通常 mbootu2 拒絕把 /dev/sda 當做標的碟。
+<li><strong>燒毀 C 槽! 無家可歸!</strong> <code>force_sda</code>
+通常 mbootu2 拒絕把 /dev/sda 當做標的碟。
 加了這個選項之後， mbootu2 才敢把 /dev/sda 當做標的碟。
 <li><code>force_sfdisk</code> 某些隨身碟在製作時會失敗，
 並且看到當中有類似這樣的錯誤訊息：
@@ -138,31 +156,14 @@ sfdisk: I don't like these partitions - nothing changed.
 (If you really want this, use the --force option.)
 那就需要加上這個選項。
 </ul>
-<li><code>-s /tmp/syslinux</code> 改從 /tmp/syslinux
-子目錄拷貝 syslinux 相關檔案。 <strong>注意!</strong>
-標的碟上的 syslinux 的版本必須跟
-「安裝 extlinux 的時候 (extlinux -i ...) 這個
-extlinux 執行檔的版本」 要一致，
-否則會無法載入模組。 所以通常沒事的話，
-還是接受預設值 /usr/lib/syslinux 比較簡單。
+<li><code>-q '-enable-kvm -m 1024'</code>
+安裝完畢後， 呼叫 qemu-system-x86_64 測試一下，
+並且傳 -enable-kvm -m 1024 當做 qemu-system-x86_64 的選項。
+<li><code>-t /dev/sdz</code> 把開機管理員安裝到 /dev/sdz。
+/dev/sdz 的分割表跟其上的每個分割全部都會被一掃而空!
 <li><code>-v 2</code> 把 mbootu2 列印訊息的囉嗦程度設為 2。
-<li><code>-z '200 800 600'</code> 把五、六、七分割的大小分別設定成
-200MB、 800MB、 600MB。 預設是只有 /dev/sdz5 一個邏輯分割，
-大小為 6400MB。
-<li><code>-x none</code> 明確指定模式 (explicit mode)：
-除了安裝 extlinux 及拷貝檔案之外， 其他什麼都不做。 此外還有：
-    <ul>
-    <li><code>-x mbr</code> 只安裝 mbr、 安裝 extlinux、 拷貝檔案。
-    <li><code>-x fdisk</code> 只切分割、 安裝 extlinux、 拷貝檔案。
-    <li><code>-x formatD</code> 只格式化第一分割 (Dos 分割)、
-    安裝 extlinux、 拷貝檔案。
-    <li><code>-x formatD</code> 只格式化第五及以後的分割 (Linux 分割)、
-    安裝 extlinux、 拷貝檔案。
-    <li><code>-x format</code> 只格式化所有分割、
-    安裝 extlinux、 拷貝檔案。
-    </ul>
-上述選項可以同時出現不只一個， 當中用半型逗號分開 (不可有空格)，
-例如 <code>-x mbr,format</code>。
+<li><strong>危險! 燒毀!</strong> <code>-z '200 800 600'</code>
+把五、六、七分割的大小分別設定成 200MB、 800MB、 600MB。
 </ol>
 
 
