@@ -88,7 +88,7 @@ if ($opts{f}) {
 ### install mbr and mark partition 1 as active
 sys_echo(qq(
     dd < $mbr_path > $target->{dev}
-    sfdisk -A1 /dev/sdb
+    sfdisk -A1 $target->{dev}
     sleep 4
 ));
 
