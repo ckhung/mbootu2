@@ -77,8 +77,13 @@ $conf_path
 my ($copy_finnix_cmd) = "";
 if ($opts{f}) {
     if (-d $opts{f} and -r $opts{f}) {
-	my ($fdir) = $opts{f} =~ m#([^/]+)/?$#;
-	$copy_finnix_cmd = "cp -a $opts{f}/ $tmpdir/target ; sed 's#  #  $fdir/#' $tmpdir/target/$fdir/md5sums > $tmpdir/target/md5sums";
+	my ($variant) = slurp("$opts{f}/finnix/os-release");
+	$variant = $variant =~ /^\s*VARIANT\s*=\s*\W*(\w+)/ ?
+	    $1 : "ckhung16a";
+	$copy_finnix_cmd = <<"CP_FINNIX"
+	cp -a $opts{f} $tmpdir/target/finnix-$variant
+	sed 's#  #  finnix-$variant/#' $tmpdir/target/finnix-$variant/md5sums > $tmpdir/target/md5sums
+CP_FINNIX
     } else {
 	print STDERR "warning: cannot read finnix dir $opts{f}, ignored\n"
 	    if $opts{v} >= 1;
@@ -115,7 +120,7 @@ $conf_path = "$target_dir/boot/syslinux/$conf_path";
 
 ### install extlinux
 sys_echo(qq(
-    mkdir $target_dir/boot
+    mkdir -p $target_dir/boot
     cp -a $opts{b} $target_dir/boot/syslinux
     extlinux -i $conf_path
     $copy_finnix_cmd
