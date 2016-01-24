@@ -122,7 +122,7 @@ $conf_path = "$target_dir/boot/syslinux/$conf_path";
 sys_echo(qq(
     mkdir -p $target_dir/boot
     cp -a $opts{b} $target_dir/boot/syslinux
-    extlinux -i $conf_path
+    extlinux -i $target_dir/boot/syslinux
     $copy_finnix_cmd
 ));
 

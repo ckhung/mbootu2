@@ -76,7 +76,7 @@ extlinux.conf。
 
 <h2>四、 一些使用範例</h2>
 
-<p>以下假設你用 finnix-ckhung16a 或更新的版本開機。
+<p>以下假設你用 finnix-ckhung16b 或更新的版本開機。
 [注意! 若你的 finnix 不是上述版本，
 務必閱讀第五節 「完整選項列表」 關於 -f 的說明。]
 
@@ -105,7 +105,7 @@ extlinux.conf。
 <code>mbootu2 -f /cdrom -m 80000 -t /dev/sdz -z '800 1200'</code>
 <li><strong>燒毀 C 槽! 讓你無家可歸!</strong>
 假設這是一部剛買的新電腦， 2T 的主硬碟裡沒有資料。
-你用 finnix-ckhung16a 光碟開機， 想要一口氣分割硬碟並安裝 finnix。
+你用 finnix-ckhung16b 光碟開機， 想要一口氣分割硬碟並安裝 finnix。
 因為平常 mbootu2 不敢燒毀 /dev/sda (就是 windows 下的 C 槽)，
 所以需要用 <code>-o force_sda</code> 選項強迫它照辦：<br />
 以下指令分配大約 200G 給 sda5、 大約 200G 給 sda6、
@@ -131,7 +131,7 @@ extlinux 執行檔的版本」 要一致，
 <li><code>-f /cdrom</code> 從 /cdrom
 把 finnix 拷貝到標的碟的第一分割， 並且自動依據 /cdrom/finnix/os-release
 的 VARIANT 資訊來命名標的目錄。
-如果你的 finnix 是 finnix-ckhung16a
+如果你的 finnix 是 finnix-ckhung16b
 或更新的版本， 這麼做完之後隨身碟就真的可以開機了。
 若是舊版或官方版， 事後可能還必須手動用文字編輯器把標的碟第一分割上的
 boot/syslinux/extlinux 裡面 「指定 finnix 目錄」 的
