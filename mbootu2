@@ -78,11 +78,17 @@ my ($copy_finnix_cmd) = "";
 if ($opts{f}) {
     if (-d $opts{f} and -r $opts{f}) {
 	my ($variant) = slurp("$opts{f}/finnix/os-release");
-	$variant = $variant =~ /^\s*VARIANT\s*=\s*\W*(\w+)/ ?
-	    $1 : "ckhung16a";
+	if ($variant =~ /^\s*VARIANT\s*=\s*\W*(\w+)/m) {
+	    $variant = $1;
+	} else {
+	    die "failed to find 'VARIANT=...' in $opts{f}/finnix/os-release\n";
+	}
 	$copy_finnix_cmd = <<"CP_FINNIX"
+	# $tmpdir/target/finnix-$variant might already exists
+	rm -rf $tmpdir/target/finnix-$variant
 	cp -a $opts{f} $tmpdir/target/finnix-$variant
 	sed 's#  #  finnix-$variant/#' $tmpdir/target/finnix-$variant/md5sums > $tmpdir/target/md5sums
+	perl -i -pe 's#finnix-\\w+#finnix-$variant#g' $tmpdir/target/boot/syslinux/extlinux.conf
 CP_FINNIX
     } else {
 	print STDERR "warning: cannot read finnix dir $opts{f}, ignored\n"
@@ -119,9 +125,16 @@ $conf_path =~ s#$opts{b}/?##;
 $conf_path = "$target_dir/boot/syslinux/$conf_path";
 
 ### install extlinux
+if (-d "$target_dir/boot/syslinux") {
+    sys_echo(qq(
+	# $target_dir/boot/syslinux already exists
+	chattr -R -i $target_dir/boot/syslinux
+	rm -rf $target_dir/boot/syslinux
+    ));
+}
 sys_echo(qq(
     mkdir -p $target_dir/boot
-    cp -a $opts{b} $target_dir/boot/syslinux
+    cp -a $opts{b} $target_dir/boot
     extlinux -i $target_dir/boot/syslinux
     $copy_finnix_cmd
 ));
@@ -139,7 +152,8 @@ sub sys_echo_line {
 die if $extra;
     print "# " if ($opts{n});
     print "$cmd\n" if $opts{v} >= 2;
-    system($cmd) unless $opts{n};
+    return if ($cmd =~ /^\s*#/ or $opts{n});
+    system($cmd);
 }
 
 sub sys_echo {
@@ -155,7 +169,7 @@ die if $extra;
 sub slurp {
     my ($fn) = @_;
     my ($ret) = "";
-    open F, $fn or die;
+    open F, $fn or die "failed to read $fn";
     while (<F>) { $ret .= $_; }
     return $ret;
 }
