@@ -87,7 +87,9 @@ if ($opts{f}) {
 	# $tmpdir/target/finnix-$variant might already exists
 	rm -rf $tmpdir/target/finnix-$variant
 	cp -a $opts{f} $tmpdir/target/finnix-$variant
-	sed 's#  #  finnix-$variant/#' $tmpdir/target/finnix-$variant/md5sums > $tmpdir/target/md5sums
+	cd $tmpdir/target/
+	md5sum $(find finnix-$variant -type f | sort) > md5sums
+	cd -
 	perl -i -pe 's#finnix-\\w+#finnix-$variant#g' $tmpdir/target/boot/syslinux/extlinux.conf
 CP_FINNIX
     } else {
