@@ -222,4 +222,15 @@ sub wipe {
     }
 }
 
+# to do:
+# replace sleep with kpartx or partprobe
+# http://askubuntu.com/questions/696274/how-to-keep-sfdisk-working
+# Version 2.26 of sfdisk changed this
+
+# https://wiki.archlinux.org/index.php/syslinux#Cannot_remove_ldlinux.sys
+# https://blogs.gnome.org/diegoe/2012/04/21/removing-the-hiddensystem-bit-of-vfatfat32-files-on-gnulinux/
+# http://linlog.skepticats.com/entries/2007/10/Editing_FAT32_file_attributes.php
+# https://forums.gentoo.org/viewtopic-t-886802-view-next.html?sid=6851c96d655f7b5d4b7c6d7ae29f3912
+# parted script to automate disk partitioning
+
 ### http://blog.yo61.com/creating-an-optimally-aligned-full-disk-partition-with-parted/

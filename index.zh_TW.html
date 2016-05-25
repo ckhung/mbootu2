@@ -48,7 +48,7 @@ mk-boot-usb 一樣， 在安裝上述開機管理員等等之前，
 如果加了 -z 選項它還會把隨身碟切成：
 <ol>
 <li>第一分割： vfat 主分割區， windows 可以看得見。
-<li>第二分割： 延申分割區， 裡面可以有一至數個 linux 邏輯分割。
+<li>第二分割： 延伸分割區， 裡面可以有一至數個 linux 邏輯分割。
 </ol>
 
 <h2>二、 需求</h2>
@@ -97,7 +97,7 @@ extlinux.conf。
 -t /dev/sdz</code>
 <li><strong>燒毀!</strong> 把 /dev/sdz 切成 sdz1、 sdz5、 sdz6
 共三個分割， 並且把它變成 finnix 開機隨身碟。
-分配 800MB 給 sdz5、 1200MB 給 sdz6。<br />
+分配 800MB 給 sdz5、 1200MB 給 sdz6； 剩下的空間全留給 sdz1。<br />
 <code>mbootu2 -f /cdrom -t /dev/sdz -z '800 1200'</code>
 <li><strong>燒毀!</strong> sfdisk 對某些隨身碟過敏， 需要加上
 <code>-o force_sfdisk</code> 選項才會成功：<br />
