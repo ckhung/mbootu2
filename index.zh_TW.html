@@ -63,7 +63,16 @@ mk-boot-usb 一樣， 在安裝上述開機管理員等等之前，
 "http://newtoypia.blogspot.tw/2014/09/chinese-finnix.html">
 阿貴版 finnix</a> 開機， 以上需求都直接滿足。
 
-<h2>三、 安裝</h2>
+<h2>三、 限制</h2>
+
+<ol>
+<li>僅能處理 MBR 分割表的隨身碟； 無法處理 GPT 分割表的隨身碟。
+<li>僅能處理有切分割的隨身碟 (插入後出現 /dev/sdz
+跟 /dev/sdz1 等等)； 無法處理未切分割的隨身碟 (插入後僅出現 /dev/sdz)。
+<li>/dev/sdz1 必須是 fat16/fat32 檔案系統； 無法處理 ntfs。
+</ol>
+
+<h2>四、 安裝</h2>
 
 <p>解壓縮之後， 請進入 mbootu2-master 子目錄， 然後：
 <pre><code>
@@ -74,7 +83,7 @@ cp syslinux/* /usr/lib/syslinux
 <p>其中最重要的就是 syslinux/ 底下的設定檔
 extlinux.conf。
 
-<h2>四、 一些使用範例</h2>
+<h2>五、 一些使用範例</h2>
 
 <p>以下假設你用 finnix-ckhung16c 或更新的版本開機。
 [注意! 若你的 finnix 不是上述版本，
@@ -121,7 +130,7 @@ extlinux.conf。
 第一次測試經常會失敗。 先不要急著重做，
 手動重下一次 qemu-system-x86_64 指令可能就成功了。
 
-<h2>五、 完整選項列表</h2>
+<h2>六、 完整選項列表</h2>
 
 <ol>
 <li><code>-b /tmp/syslinux</code> 改從 /tmp/syslinux
