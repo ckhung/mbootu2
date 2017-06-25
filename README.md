@@ -1,4 +1,7 @@
 # mbootu2
 partition, format, and make bootable a usb flash drive using extlinux (rewrite of mk-boot-usb)
 
-詳見 [專案官網](http://ckhung.github.com/mbootu2/index.zh_TW.html)
+**This project is abandoned. Please switch to
+[mbootuz](https://github.com/ckhung/mbootuz).**
+
+For historical references, the old documents are available [here](http://ckhung.github.com/mbootu2/index.html)
